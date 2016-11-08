@@ -1,55 +1,82 @@
 package main
 
 import (
+	"encoding/xml"
+	"fmt"
+	"io/ioutil"
 	"log"
-	"os"
 
-	"github.com/fsnotify/fsnotify"
+	"github.com/anyweez/zombhunt/parser"
+	"github.com/anyweez/zombhunt/types"
+	"github.com/anyweez/zombhunt/world"
 )
 
-func getWatched() []string {
-	args := os.Args[1:]
+/**
+ * Read all game data and print it to the screen. Eventually this will be a daemon process that runs
+ * in the background and watches for changes but it currently only reads once and exits. Also makes
+ * API requests to Steam to get player info.
+ */
+func main() {
+	LoadConfig("src/github.com/anyweez/zombhunt/zombhunt.toml")
+	w := world.Get()
 
-	return args
+	w.Players = loadPlayers()
+	w.Items = loadItems()
+
+	fmt.Println("Zombhunt")
+	fmt.Printf("Players: %d\t\tItems: %d\n", len(w.Players), len(w.Items))
+
+	for _, player := range w.Players {
+		player.Inventory = parser.LoadInventory(GetConfig().Paths.SaveGame, player)
+	}
+
+	for _, player := range w.Players {
+		fmt.Printf("\n%s:\n", player.Name)
+
+		for _, item := range player.Inventory {
+			fmt.Printf("  - %dx %s\n", item.Quantity, item.Name)
+		}
+	}
 }
 
-func main() {
-	// Check to make sure we've got some valid inputs. If not, no need to proceed.
-	files := getWatched()
-
-	if len(files) == 0 {
-		log.Fatal("No valid files to watch specified.")
-	}
-
-	watcher, err := fsnotify.NewWatcher()
-	done := make(chan bool)
+/**
+ * Load all players that have logged into the game. This includes players who may not
+ * currently be playing.
+ */
+func loadPlayers() []*types.Player {
+	var players types.XmlPlayers
+	pData, err := ioutil.ReadFile(GetConfig().Paths.PlayerData)
 
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Can't read " + GetConfig().Paths.PlayerData)
 	}
 
-	// Concurrent goroutine that awaits events and does Smart Things when they occur.
-	go func() {
-		log.Println("Awaiting changes...")
-		for {
-			select {
-			case event := <-watcher.Events:
-				if event.Op&fsnotify.Write == fsnotify.Write {
-					log.Println("modified file:", event.Name)
-				}
-			case err := <-watcher.Errors:
-				log.Println("Error: ", err)
-				close(done)
-			}
-		}
-	}()
+	xml.Unmarshal(pData, &players)
 
-	defer watcher.Close()
+	out := make([]*types.Player, 0, len(players.Players))
+	for _, player := range players.Players {
+		extra := player.Fetch()
 
-	for _, filename := range files {
-		log.Println("Watching", filename)
-		err = watcher.Add(filename)
+		out = append(out, &types.Player{
+			Id:         player.Id,
+			Name:       extra.PersonaName,
+			ProfileUrl: extra.ProfileUrl,
+		})
 	}
 
-	<-done
+	return out
+}
+
+func loadItems() []*types.ItemType {
+	// TODO: generalize paths
+	var items types.XmlItemTypes
+	iData, err := ioutil.ReadFile(GetConfig().Paths.ItemData)
+
+	if err != nil {
+		log.Fatal("Can't read " + GetConfig().Paths.ItemData)
+	}
+
+	xml.Unmarshal(iData, &items)
+
+	return items.Items
 }

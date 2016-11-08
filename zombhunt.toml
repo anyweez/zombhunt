@@ -1,0 +1,5 @@
+[paths]
+# Path to the specific game folder (should contain world and player data)
+Saves       = "/Users/luke/Desktop/7d2d/rocks/world/GOLLY"
+# Path to 7 Days to Die configuration files (XML) 
+GameData    = "/Users/luke/Desktop/7d2d/rocks/world/GOLLY/Config"
