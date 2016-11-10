@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"strconv"
 
 	"github.com/anyweez/zombhunt/types"
 	"github.com/anyweez/zombhunt/world"
@@ -17,9 +16,9 @@ const (
 	InventorySize = 32
 )
 
-func LoadInventory(dir string, player *types.Player) []types.InventoryItem {
-	var items []types.InventoryItem
-	data, err := ioutil.ReadFile(dir + "/Player/" + strconv.FormatUint(player.Id, 10) + ".ttp")
+func LoadInventory(filepath string) types.Inventory {
+	inventory := types.NewInventory()
+	data, err := ioutil.ReadFile(filepath)
 
 	if err != nil {
 		log.Fatal(err)
@@ -32,7 +31,7 @@ func LoadInventory(dir string, player *types.Player) []types.InventoryItem {
 		next, err := readItem(data[pos+(i*15) : pos+(i*15)+15])
 
 		if next.Id > 0 && err == nil {
-			items = append(items, next)
+			inventory.AddItem(next)
 		}
 	}
 
@@ -43,11 +42,11 @@ func LoadInventory(dir string, player *types.Player) []types.InventoryItem {
 		next, err := readItem(data[pos+(i*15) : pos+(i*15)+15])
 
 		if next.Id > 0 && err == nil {
-			items = append(items, next)
+			inventory.AddItem(next)
 		}
 	}
 
-	return items
+	return inventory
 }
 
 func ff_0x0800(data []byte) (int, error) {

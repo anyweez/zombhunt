@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"strconv"
@@ -14,6 +15,14 @@ type InventoryItem struct {
 	Id       uint32
 	Name     string
 	Quantity uint32
+}
+
+/**
+ * Inventories are maps of Item ID's to InventoryItem's. There is only one entry per type of
+ * item so even if there are multiple stacks of an item, only a single entry will exist here.
+ */
+type Inventory struct {
+	Items map[uint32]*InventoryItem
 }
 
 /*
@@ -30,7 +39,7 @@ type Player struct {
 	Name       string
 	ProfileUrl string
 
-	Inventory []InventoryItem
+	Inventory Inventory
 }
 
 type World struct {
@@ -59,6 +68,13 @@ func (p *XmlPlayer) Fetch() *steamPlayer {
 	return steam.Response.Players[0]
 }
 
+func NewPlayer() Player {
+	var p Player
+	p.Inventory = NewInventory()
+
+	return p
+}
+
 // TODO: use map to make this O(1)
 func (w *World) FindItem(id uint32) *ItemType {
 	for _, item := range w.Items {
@@ -68,4 +84,75 @@ func (w *World) FindItem(id uint32) *ItemType {
 	}
 
 	return nil
+}
+
+func (w *World) PlayerExists(id uint64) bool {
+	for _, player := range w.Players {
+		if player.Id == id {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (w *World) AddPlayer(p *Player) {
+	w.Players = append(w.Players, p)
+}
+
+func (w *World) GetPlayer(id uint64) *Player {
+	for _, player := range w.Players {
+		if player.Id == id {
+			return player
+		}
+	}
+
+	return nil
+}
+
+func (w *World) ItemExists(id uint32) bool {
+	for _, item := range w.Items {
+		if item.Id == id {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (w *World) AddItem(item *ItemType) {
+	w.Items = append(w.Items, item)
+}
+
+func NewInventory() Inventory {
+	var inv Inventory
+	inv.Items = make(map[uint32]*InventoryItem)
+
+	return inv
+}
+
+/**
+ * Adds an item to the inventory. Multiple stacks of the same item are collapsed.
+ */
+func (inv *Inventory) AddItem(item InventoryItem) {
+	if _, exists := inv.Items[item.Id]; exists {
+		inv.Items[item.Id].Quantity += item.Quantity
+	} else {
+		inv.Items[item.Id] = &item
+	}
+
+	inv.checkWipe(inv.Items[item.Id])
+}
+
+func (inv *Inventory) RemoveItem(item InventoryItem) {
+	if _, exists := inv.Items[item.Id]; exists {
+		inv.Items[item.Id].Quantity = uint32(math.Max(0, float64(inv.Items[item.Id].Quantity-item.Quantity)))
+		inv.checkWipe(inv.Items[item.Id])
+	}
+}
+
+func (inv *Inventory) checkWipe(item *InventoryItem) {
+	if item.Quantity == 0 {
+		delete(inv.Items, item.Id)
+	}
 }

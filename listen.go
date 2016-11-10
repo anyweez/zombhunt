@@ -1,15 +1,29 @@
 package main
 
 import (
-	"encoding/xml"
 	"fmt"
-	"io/ioutil"
 	"log"
+	"os"
+	"path"
 
-	"github.com/anyweez/zombhunt/parser"
 	"github.com/anyweez/zombhunt/types"
 	"github.com/anyweez/zombhunt/world"
+	"github.com/fsnotify/fsnotify"
 )
+
+func init() {
+	if os.Getenv("STEAM_API_KEY") == "" {
+		log.Fatal("No Steam API key provided. Set STEAM_API_KEY.")
+	}
+}
+
+type watchRequest struct {
+	Path      string
+	Handler   watchHandler
+	SkipFirst bool
+}
+
+type watchHandler func(string, *types.World, chan watchRequest)
 
 /**
  * Read all game data and print it to the screen. Eventually this will be a daemon process that runs
@@ -19,64 +33,86 @@ import (
 func main() {
 	LoadConfig("src/github.com/anyweez/zombhunt/zombhunt.toml")
 	w := world.Get()
+	done := make(chan bool)
+	wr := make(chan watchRequest, 10)
 
-	w.Players = loadPlayers()
-	w.Items = loadItems()
+	watch, err := fsnotify.NewWatcher()
+	defer watch.Close()
 
-	fmt.Println("Zombhunt")
-	fmt.Printf("Players: %d\t\tItems: %d\n", len(w.Players), len(w.Items))
-
-	for _, player := range w.Players {
-		player.Inventory = parser.LoadInventory(GetConfig().Paths.SaveGame, player)
+	if err != nil {
+		log.Fatal("Can't watch the filesystem.")
 	}
 
-	for _, player := range w.Players {
-		fmt.Printf("\n%s:\n", player.Name)
+	events := make(map[string]watchHandler)
 
-		for _, item := range player.Inventory {
-			fmt.Printf("  - %dx %s\n", item.Quantity, item.Name)
+	// Listen for change events and handle them when they come
+	go func() {
+		for {
+			select {
+			case event := <-watch.Events:
+				log.Println("Reading latest version of " + path.Base(event.Name))
+
+				events[event.Name](event.Name, w, wr)
+
+			case err := <-watch.Errors:
+				log.Println("Error: " + err.Error())
+
+				done <- true
+			}
 		}
-	}
-}
+	}()
 
-/**
- * Load all players that have logged into the game. This includes players who may not
- * currently be playing.
- */
-func loadPlayers() []*types.Player {
-	var players types.XmlPlayers
-	pData, err := ioutil.ReadFile(GetConfig().Paths.PlayerData)
+	// Set up watchers. There can only be one watch per file.
+	go func() {
+		for {
+			request := <-wr
+			log.Println("Watching " + path.Base(request.Path))
 
-	if err != nil {
-		log.Fatal(err.Error() + "\nCan't read " + GetConfig().Paths.PlayerData)
-	}
+			events[request.Path] = request.Handler
+			watch.Add(request.Path)
 
-	xml.Unmarshal(pData, &players)
+			// SkipFirst indicates that we should not read when we first start watching.
+			// The default is to read @ first watch.
+			if !request.SkipFirst {
+				watch.Events <- fsnotify.Event{
+					Name: request.Path,
+					Op:   fsnotify.Create,
+				}
+			}
+		}
+	}()
 
-	out := make([]*types.Player, 0, len(players.Players))
-	for _, player := range players.Players {
-		extra := player.Fetch()
+	fmt.Println("Loading...")
 
-		out = append(out, &types.Player{
-			Id:         player.Id,
-			Name:       extra.PersonaName,
-			ProfileUrl: extra.ProfileUrl,
-		})
-	}
-
-	return out
-}
-
-func loadItems() []*types.ItemType {
-	// TODO: generalize paths
-	var items types.XmlItemTypes
-	iData, err := ioutil.ReadFile(GetConfig().Paths.ItemData)
-
-	if err != nil {
-		log.Fatal(err.Error() + "\nCan't read " + GetConfig().Paths.ItemData)
+	// Read the list of players and make sure all are accounted for in the world.
+	wr <- watchRequest{
+		Path:    GetConfig().Paths.PlayerData,
+		Handler: CheckPlayers,
 	}
 
-	xml.Unmarshal(iData, &items)
+	// Read the list of items and read in any new ones.
+	wr <- watchRequest{
+		Path:    GetConfig().Paths.ItemData,
+		Handler: CheckItems,
+	}
 
-	return items.Items
+	// w.Players = loadPlayers()
+	// w.Items = loadItems()
+
+	// fmt.Println("Zombhunt")
+	// fmt.Printf("Players: %d\t\tItems: %d\n", len(w.Players), len(w.Items))
+
+	// for _, player := range w.Players {
+	// 	player.Inventory = parser.LoadInventory(GetConfig().Paths.SaveGame, player)
+	// }
+
+	// for _, player := range w.Players {
+	// 	fmt.Printf("\n%s:\n", player.Name)
+
+	// 	for _, item := range player.Inventory {
+	// 		fmt.Printf("  - %dx %s\n", item.Quantity, item.Name)
+	// 	}
+	// }
+
+	<-done
 }
