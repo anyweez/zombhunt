@@ -20,6 +20,10 @@ type ConfigPaths struct {
 
 var config ApplicationConfig
 
+/**
+ * Load the TOML configuration file. LoadConfig() only needs to be called once,
+ * then GetConfig() can be used each time after that.
+ */
 func LoadConfig(path string) ApplicationConfig {
 	data, err := ioutil.ReadFile(path)
 

@@ -48,7 +48,7 @@ func loadPlayers() []*types.Player {
 	pData, err := ioutil.ReadFile(GetConfig().Paths.PlayerData)
 
 	if err != nil {
-		log.Fatal("Can't read " + GetConfig().Paths.PlayerData)
+		log.Fatal(err.Error() + "\nCan't read " + GetConfig().Paths.PlayerData)
 	}
 
 	xml.Unmarshal(pData, &players)
@@ -73,7 +73,7 @@ func loadItems() []*types.ItemType {
 	iData, err := ioutil.ReadFile(GetConfig().Paths.ItemData)
 
 	if err != nil {
-		log.Fatal("Can't read " + GetConfig().Paths.ItemData)
+		log.Fatal(err.Error() + "\nCan't read " + GetConfig().Paths.ItemData)
 	}
 
 	xml.Unmarshal(iData, &items)
