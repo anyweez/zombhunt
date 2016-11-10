@@ -39,7 +39,7 @@ type Player struct {
 	Name       string
 	ProfileUrl string
 
-	Inventory Inventory
+	Inventory *Inventory
 }
 
 type World struct {
@@ -68,11 +68,11 @@ func (p *XmlPlayer) Fetch() *steamPlayer {
 	return steam.Response.Players[0]
 }
 
-func NewPlayer() Player {
+func NewPlayer() *Player {
 	var p Player
 	p.Inventory = NewInventory()
 
-	return p
+	return &p
 }
 
 // TODO: use map to make this O(1)
@@ -124,11 +124,11 @@ func (w *World) AddItem(item *ItemType) {
 	w.Items = append(w.Items, item)
 }
 
-func NewInventory() Inventory {
+func NewInventory() *Inventory {
 	var inv Inventory
 	inv.Items = make(map[uint32]*InventoryItem)
 
-	return inv
+	return &inv
 }
 
 /**

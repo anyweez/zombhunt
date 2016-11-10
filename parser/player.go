@@ -16,7 +16,7 @@ const (
 	InventorySize = 32
 )
 
-func LoadInventory(filepath string) types.Inventory {
+func LoadInventory(filepath string) *types.Inventory {
 	inventory := types.NewInventory()
 	data, err := ioutil.ReadFile(filepath)
 

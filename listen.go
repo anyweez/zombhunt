@@ -1,14 +1,18 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"path"
 
 	"github.com/anyweez/zombhunt/types"
 	"github.com/anyweez/zombhunt/world"
 	"github.com/fsnotify/fsnotify"
+	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
 )
 
 func init() {
@@ -33,7 +37,6 @@ type watchHandler func(string, *types.World, chan watchRequest)
 func main() {
 	LoadConfig("src/github.com/anyweez/zombhunt/zombhunt.toml")
 	w := world.Get()
-	done := make(chan bool)
 	wr := make(chan watchRequest, 10)
 
 	watch, err := fsnotify.NewWatcher()
@@ -56,8 +59,6 @@ func main() {
 
 			case err := <-watch.Errors:
 				log.Println("Error: " + err.Error())
-
-				done <- true
 			}
 		}
 	}()
@@ -114,5 +115,24 @@ func main() {
 	// 	}
 	// }
 
-	<-done
+	setupApi(w)
+}
+
+func setupApi(world *types.World) {
+	router := mux.NewRouter()
+
+	router.HandleFunc("/inventories", func(w http.ResponseWriter, r *http.Request) {
+		inventories := make([]types.RESTInventory, 0)
+
+		for _, player := range world.Players {
+			inventories = append(inventories, types.RESTInventory{
+				Player:    player,
+				Inventory: player.Inventory,
+			})
+		}
+
+		json.NewEncoder(w).Encode(world.Players)
+	})
+
+	http.ListenAndServe(":8080", handlers.LoggingHandler(os.Stdout, router))
 }

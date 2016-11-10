@@ -37,7 +37,7 @@ func CheckPlayers(filepath string, world *types.World, wr chan watchRequest) {
 
 			log.Printf("Adding player %s\n", extra.PersonaName)
 
-			world.AddPlayer(&newp)
+			world.AddPlayer(newp)
 
 			wr <- watchRequest{
 				Path:    fmt.Sprintf("%s/%d.ttp", GetConfig().Paths.PlayerDirectory, player.Id),
@@ -70,8 +70,6 @@ func CheckItems(filepath string, world *types.World, wr chan watchRequest) {
 
 func CheckPlayer(filepath string, world *types.World, wr chan watchRequest) {
 	inventory := parser.LoadInventory(filepath)
-
-	fmt.Printf("%+v\n", inventory)
 
 	id, _ := strconv.ParseUint(strings.Split(path.Base(filepath), ".")[0], 10, 64)
 	player := world.GetPlayer(id)
