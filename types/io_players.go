@@ -24,4 +24,5 @@ type steamPlayerResponse struct {
 type steamPlayer struct {
 	PersonaName string
 	ProfileUrl  string
+	AvatarUrl   string `json:"avatar"`
 }

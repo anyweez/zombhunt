@@ -7,12 +7,14 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/anyweez/zombhunt/types"
 	"github.com/anyweez/zombhunt/world"
 	"github.com/fsnotify/fsnotify"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/rs/cors"
 )
 
 func init() {
@@ -97,23 +99,10 @@ func main() {
 		Handler: CheckItems,
 	}
 
-	// w.Players = loadPlayers()
-	// w.Items = loadItems()
-
-	// fmt.Println("Zombhunt")
-	// fmt.Printf("Players: %d\t\tItems: %d\n", len(w.Players), len(w.Items))
-
-	// for _, player := range w.Players {
-	// 	player.Inventory = parser.LoadInventory(GetConfig().Paths.SaveGame, player)
-	// }
-
-	// for _, player := range w.Players {
-	// 	fmt.Printf("\n%s:\n", player.Name)
-
-	// 	for _, item := range player.Inventory {
-	// 		fmt.Printf("  - %dx %s\n", item.Quantity, item.Name)
-	// 	}
-	// }
+	wr <- watchRequest{
+		Path:    GetConfig().Paths.RecipeData,
+		Handler: CheckRecipes,
+	}
 
 	setupApi(w)
 }
@@ -134,5 +123,24 @@ func setupApi(world *types.World) {
 		json.NewEncoder(w).Encode(world.Players)
 	})
 
-	http.ListenAndServe(":8080", handlers.LoggingHandler(os.Stdout, router))
+	router.HandleFunc("/recipes", func(w http.ResponseWriter, r *http.Request) {
+		if len(r.URL.Query()["q"]) == 0 {
+			json.NewEncoder(w).Encode(world.Recipes)
+		} else {
+			query := r.URL.Query()["q"][0]
+
+			recipes := make([]*types.Recipe, 0)
+
+			for _, recipe := range world.Recipes {
+				if strings.Contains(strings.ToUpper(recipe.Name), strings.ToUpper(query)) {
+					recipes = append(recipes, recipe)
+				}
+			}
+
+			json.NewEncoder(w).Encode(recipes)
+		}
+	})
+
+	handler := cors.Default().Handler(handlers.LoggingHandler(os.Stdout, router))
+	http.ListenAndServe(":8080", handler)
 }

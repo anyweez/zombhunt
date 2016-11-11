@@ -38,13 +38,21 @@ type Player struct {
 	Id         uint64
 	Name       string
 	ProfileUrl string
+	AvatarUrl  string
 
 	Inventory *Inventory
+}
+
+type Recipe struct {
+	Name        string
+	Count       uint32
+	Ingredients []*InventoryItem
 }
 
 type World struct {
 	Players []*Player
 	Items   []*ItemType
+	Recipes []*Recipe
 }
 
 // TODO: reorganize. Feels sloppy to include this receiver on the XmlPlayer type.
@@ -122,6 +130,30 @@ func (w *World) ItemExists(id uint32) bool {
 
 func (w *World) AddItem(item *ItemType) {
 	w.Items = append(w.Items, item)
+}
+
+func (w *World) GetItem(name string) *ItemType {
+	for _, item := range w.Items {
+		if item.Name == name {
+			return item
+		}
+	}
+
+	return nil
+}
+
+func (w *World) RecipeExists(name string) bool {
+	for _, recipe := range w.Recipes {
+		if recipe.Name == name {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (w *World) AddRecipe(r *Recipe) {
+	w.Recipes = append(w.Recipes, r)
 }
 
 func NewInventory() *Inventory {

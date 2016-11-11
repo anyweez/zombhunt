@@ -16,6 +16,7 @@ type ConfigPaths struct {
 	GameData        string `toml:"GameData"`
 	PlayerData      string // Derived from raw fields
 	ItemData        string // Derived from raw fields
+	RecipeData      string
 	PlayerDirectory string
 }
 
@@ -38,6 +39,7 @@ func LoadConfig(path string) ApplicationConfig {
 
 	config.Paths.PlayerData = config.Paths.SaveGame + "/players.xml"
 	config.Paths.ItemData = config.Paths.GameData + "/items.xml"
+	config.Paths.RecipeData = config.Paths.GameData + "/recipes.xml"
 	config.Paths.PlayerDirectory = config.Paths.SaveGame + "/Player"
 
 	return config

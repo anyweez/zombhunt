@@ -34,6 +34,7 @@ func CheckPlayers(filepath string, world *types.World, wr chan watchRequest) {
 			newp.Id = player.Id
 			newp.Name = extra.PersonaName
 			newp.ProfileUrl = extra.ProfileUrl
+			newp.AvatarUrl = extra.AvatarUrl
 
 			log.Printf("Adding player %s\n", extra.PersonaName)
 
@@ -52,7 +53,7 @@ func CheckItems(filepath string, world *types.World, wr chan watchRequest) {
 	iData, err := ioutil.ReadFile(filepath)
 
 	if err != nil {
-		log.Fatal(err.Error() + "\nCan't read " + GetConfig().Paths.ItemData)
+		log.Fatal(err.Error() + "\nCan't read " + filepath)
 	}
 
 	xml.Unmarshal(iData, &items)
@@ -61,11 +62,55 @@ func CheckItems(filepath string, world *types.World, wr chan watchRequest) {
 	for _, item := range items.Items {
 		if !world.ItemExists(item.Id) {
 			world.AddItem(item)
-			cnt += 1
+			cnt++
 		}
 	}
 
 	log.Printf("Loaded %d new items\n", cnt)
+}
+
+func CheckRecipes(filepath string, world *types.World, wr chan watchRequest) {
+	var recipes types.XmlRecipeList
+	iData, err := ioutil.ReadFile(filepath)
+
+	if err != nil {
+		log.Fatal(err.Error() + "\nCan't read " + filepath)
+	}
+
+	xml.Unmarshal(iData, &recipes)
+
+	cnt := 0
+	for _, recipe := range recipes.Recipes {
+		if !world.RecipeExists(recipe.Name) {
+			fmt.Printf("%+v\n", recipe)
+
+			ingredients := make([]*types.InventoryItem, 0, len(recipe.Ingredients))
+
+			for _, item := range recipe.Ingredients {
+				full := world.GetItem(item.Name)
+
+				if full != nil {
+					ingredients = append(ingredients, &types.InventoryItem{
+						Id:       full.Id,
+						Name:     item.Name,
+						Quantity: item.Count,
+					})
+				}
+			}
+
+			if len(ingredients) > 0 {
+				world.AddRecipe(&types.Recipe{
+					Name:        recipe.Name,
+					Count:       recipe.Count,
+					Ingredients: ingredients,
+				})
+
+				cnt++
+			}
+		}
+	}
+
+	log.Printf("Loaded %d new recipes\n", cnt)
 }
 
 func CheckPlayer(filepath string, world *types.World, wr chan watchRequest) {
