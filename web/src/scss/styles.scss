@@ -1,0 +1,24 @@
+// Colors: https://coolors.co/aac6c8-56667d-e5e4db-d7cdaa-847165
+@import '../../node_modules/foundation-sites/scss/foundation';
+
+@include foundation-global-styles;
+@include foundation-grid;
+
+
+@import 'base/base';
+@import 'layout/layout';
+
+// Components
+@import 'components/autocomplete';
+@import 'components/inventory';
+@import 'components/item';
+@import 'components/recipe';
+
+div.intro {
+  display: inline-block;
+}
+
+// Override Foundation default
+.items .item:last-child:not(:first-child) {
+  float: inherit;
+}

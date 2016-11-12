@@ -1,0 +1,4 @@
+.recipe {
+  min-height: 300px;
+  @include grid-row();
+}

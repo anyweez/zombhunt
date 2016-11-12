@@ -1,0 +1,31 @@
+.items {
+    display: inline-block;
+    vertical-align: top;
+    @include grid-row();
+    width: 100%;
+
+    .item {
+        display: inline-block;
+        @include grid-column(4);
+
+        margin-bottom: 10px;
+
+        span {
+            display: inline-block;
+            min-width: 80px;
+        }
+    }
+
+    .item.highlight {
+        background-color: orange;
+    }
+
+    .item.meets-requirements {
+        background-color: green;
+    }
+
+    .item.beneath-requirements {
+        background-color: red;
+    }
+}
+

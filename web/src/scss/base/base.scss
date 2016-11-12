@@ -1,0 +1,19 @@
+body {
+  background-color: #E5E4DB;
+}
+
+input[type="text"] {
+  font-size: 1.2em;
+  padding: 6px 5px;
+
+  box-sizing: border-box;
+}
+
+header > * {
+  margin: 20px 0;
+}
+
+
+@import 'header';
+@import 'main';
+@import 'footer';

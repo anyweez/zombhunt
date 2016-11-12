@@ -1,0 +1,5 @@
+export default {
+    RECIPE_UPDATE_QUANTITY: 1,
+    RECIPE_UPDATE_SELECTED: 2,
+    INVENTORY_UPDATE: 3,
+};;
