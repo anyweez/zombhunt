@@ -82,16 +82,13 @@ func CheckRecipes(filepath string, world *types.World, wr chan watchRequest) {
 	cnt := 0
 	for _, recipe := range recipes.Recipes {
 		if !world.RecipeExists(recipe.Name) {
-			fmt.Printf("%+v\n", recipe)
-
-			ingredients := make([]*types.InventoryItem, 0, len(recipe.Ingredients))
+			ingredients := make([]*types.Recipe, 0, len(recipe.Ingredients))
 
 			for _, item := range recipe.Ingredients {
 				full := world.GetItem(item.Name)
 
 				if full != nil {
-					ingredients = append(ingredients, &types.InventoryItem{
-						Id:       full.Id,
+					ingredients = append(ingredients, &types.Recipe{
 						Name:     item.Name,
 						Quantity: item.Count,
 					})
@@ -101,7 +98,7 @@ func CheckRecipes(filepath string, world *types.World, wr chan watchRequest) {
 			if len(ingredients) > 0 {
 				world.AddRecipe(&types.Recipe{
 					Name:        recipe.Name,
-					Count:       recipe.Count,
+					Quantity:    recipe.Count,
 					Ingredients: ingredients,
 				})
 
@@ -110,7 +107,31 @@ func CheckRecipes(filepath string, world *types.World, wr chan watchRequest) {
 		}
 	}
 
+	for i, recipe := range world.Recipes {
+		world.Recipes[i] = PopulateRecipe(world, recipe)
+	}
+
 	log.Printf("Loaded %d new recipes\n", cnt)
+}
+
+/**
+ * Recursively look up ingredients for a recipe.
+ */
+func PopulateRecipe(world *types.World, recipe *types.Recipe) *types.Recipe {
+	full := world.GetRecipe(recipe.Name)
+
+	if full == nil {
+		return recipe
+	}
+
+	for i, ingredient := range full.Ingredients {
+		if ingredient.Name != recipe.Name {
+			full.Ingredients[i] = PopulateRecipe(world, ingredient)
+		}
+	}
+
+	recipe.Ingredients = full.Ingredients
+	return recipe
 }
 
 func CheckPlayer(filepath string, world *types.World, wr chan watchRequest) {

@@ -45,8 +45,8 @@ type Player struct {
 
 type Recipe struct {
 	Name        string
-	Count       uint32
-	Ingredients []*InventoryItem
+	Quantity    uint32
+	Ingredients []*Recipe
 }
 
 type World struct {
@@ -154,6 +154,16 @@ func (w *World) RecipeExists(name string) bool {
 
 func (w *World) AddRecipe(r *Recipe) {
 	w.Recipes = append(w.Recipes, r)
+}
+
+func (w *World) GetRecipe(name string) *Recipe {
+	for _, recipe := range w.Recipes {
+		if recipe.Name == name {
+			return recipe
+		}
+	}
+
+	return nil
 }
 
 func NewInventory() *Inventory {
